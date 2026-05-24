@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyc
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# TensorFlow / PyTorch
+*.ckpt
+*.h5
+logs/
+
+# Temporary
+*.tmp
+*.log
+
+# Archive (draft versions)
+archive/
+
+# LaTeX auxiliary
+*.aux
+*.toc
+*.out
+*.synctex.gz
+
+# Anonymization mapping (do not commit)
+data/name_to_id_mapping.txt

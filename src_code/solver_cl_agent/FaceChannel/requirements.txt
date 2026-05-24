@@ -1,0 +1,11 @@
+numpy
+pandas
+matplotlib
+scikit-learn
+scipy
+opencv-python==4.5.3.56
+h5py
+intel_tensorflow==2.4.0
+tensorflow==2.4.0
+keras==2.4.0
+Flask

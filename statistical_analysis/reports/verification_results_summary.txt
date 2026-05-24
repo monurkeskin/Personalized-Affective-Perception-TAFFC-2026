@@ -1,0 +1,21 @@
+================================================================================
+SOLVER-CL ACADEMIC REPLICATION REPORT
+================================================================================
+Metric / Condition                  CL (Replicated) FC (Replicated) Replication Target   Status    
+-----------------------------------------------------------------------------------------------
+Agent Utility Mean                  0.750           0.728           0.750 vs 0.728 [PASS]
+Agent Utility t-test (p-val, d)     p=0.017         d=0.305         p<0.017, d=0.31 [PASS]
+-----------------------------------------------------------------------------------------------
+Human Concession Rate Mean          37.4         % 28.1         % 37.4% vs 28.1% [PASS]
+Human Concession t-test (p, d)      p=0.013         d=0.316         p<0.013, d=0.32 [PASS]
+-----------------------------------------------------------------------------------------------
+Agreement Rounds Mean               7.61            8.56            7.61 vs 8.56 [PASS]
+Agreement Rounds t-test (p, d)      p=0.134         d=-0.188        p=0.130, d=-0.19 [PASS]
+Affect Dimension                    Beta (Replicated) z-stat (Replicated) Replication Target   Status    
+-----------------------------------------------------------------------------------------------
+Norm Arousal LMM Effect             β=0.1443        z=22.313        β=0.144, z=22.31 [PASS]
+Norm Valence LMM Effect             β=0.0335        z=4.341         β=0.033, z=4.34 [PASS]
+Condition                           Mean r (Replicated) Fisher-z Mean   Replication Target   Status    
+-----------------------------------------------------------------------------------------------
+Generic Baseline (FC)               r=-0.267        z=-0.274        r=-0.15 (negative) [PASS]
+Personalized Agent (CL)             r=0.865         z=1.312         r=0.45 (positive) [PASS]
