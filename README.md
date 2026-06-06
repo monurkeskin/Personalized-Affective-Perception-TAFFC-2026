@@ -51,32 +51,6 @@ The pre-trained CAAE (Conditional Adversarial Auto-Encoder) model for imaginatio
 
 For the original CLIFER trained models, see the [CLIFER Repository](https://github.com/nchuramani/CLIFER).
 
----
-
-## 3.5. Verification & Replication Script
-
-We provide a Python script (`verify_all_results.py`) to replicate the paper's findings. The script automatically merges the raw logs, computes the paired t-tests, fits the mixed-effects regression models, runs the within-subject mediation analysis, and prints a comparison table against the values reported in the paper.
-
-### Installation
-Install all scientific and statistical dependencies in a virtual environment:
-```bash
-pip install -r requirements.txt
-```
-
-### Run Replication Script
-Execute the replication pipeline from the root directory:
-```bash
-python3 verify_all_results.py
-```
-This script dynamically:
-1. Re-merges the uncorrupted turns using `statistical_analysis/code/merge_session_logs.py`.
-2. Computes and checks all paired utility and concession statistics.
-3. Fits the mixed-effects regression models.
-4. Generates a colorized terminal comparison table comparing replicated metrics directly against the targets.
-5. Saves the statistical replication report to `statistical_analysis/reports/verification_results_summary.txt`.
-
----
-
 ## 4. Repository Organization
 
 ```
