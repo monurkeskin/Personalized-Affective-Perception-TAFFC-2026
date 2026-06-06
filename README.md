@@ -70,9 +70,6 @@ For the original CLIFER trained models, see the [CLIFER Repository](https://gith
 │       ├── FaceChannel/    # CLIFER Module (Continual Learning)
 │       ├── HATN/           # Negotiator Core (Protocol)
 │       └── Agent/          # Solver Agent (Decision Logic)
-└── statistical_analysis/   # [ANALYSIS] Mixed-effects models
-    ├── code/               # Python scripts
-    └── reports/            # PDF reports
 ```
 
 ---
