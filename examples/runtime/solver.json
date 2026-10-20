@@ -1,0 +1,7 @@
+{
+  "source_root": "src_code/solver_cl_agent",
+  "profile_path": "HATN/Domain/Fruit/Fruits_B_Agent.xml",
+  "issue_order": ["watermelon", "banana", "orange", "apple"],
+  "domain_totals": {"watermelon": 4, "banana": 4, "orange": 4, "apple": 4},
+  "time_semantics": "elapsed_fraction"
+}

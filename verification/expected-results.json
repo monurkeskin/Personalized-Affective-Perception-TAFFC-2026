@@ -1,0 +1,135 @@
+{
+  "format_version": 1,
+  "source_commit": "bd30cdd79ea05a4d23a1840e05e511dc7e0b9b04",
+  "provenance": "Frozen numeric reference calculated from the two public final_dataset CSVs using keyed participant pairing, sample SD (ddof=1), two-sided paired t tests and unadjusted 95% paired t intervals. This is public-result regression verification, not independent scientific validation.",
+  "source_file_sha256": {
+    "experiment_subject_data.csv": "1b9d42e06cbe4c8d4b191f416d70a8025b588480cd111630aeab9bbaff76ee0c",
+    "experiment_round_data.csv": "22c818d22308efd49c36b5142ce390e8b75c15fa8902178fdbe4dd32d78dbd9a"
+  },
+  "canonical_sha256": {
+    "subjects": "43178e8369aa4d1175bc5e78beca96ad11dea9e962942f850abc1ca9e7178bea",
+    "rounds": "74cb31a4d4df768b8a0312aa4e046af2bfaacdaa3ac092a06c163d140b177d0d"
+  },
+  "results": {
+    "counts": {
+      "participants": 66,
+      "subject_rows": 132,
+      "round_rows": 2114,
+      "round_rows_CL": 980,
+      "round_rows_FC": 1134,
+      "CL_first": 34
+    },
+    "paired_outcomes": {
+      "Agent_Utility": {
+        "n_pairs": 66,
+        "df": 65,
+        "CL_mean": 0.7503787878787879,
+        "CL_sample_sd": 0.06437456859339007,
+        "FC_mean": 0.728030303030303,
+        "FC_sample_sd": 0.07551300849664547,
+        "CL_minus_FC_mean": 0.022348484848484843,
+        "difference_sample_sd": 0.07378878222524331,
+        "difference_ci95_low": 0.004208938128466722,
+        "difference_ci95_high": 0.04048803156850296,
+        "t": 2.460535920491227,
+        "p_two_sided": 0.016539148849266504,
+        "cohens_dz": 0.30287103506147006
+      },
+      "Human_Utility": {
+        "n_pairs": 66,
+        "df": 65,
+        "CL_mean": 0.7522727272727272,
+        "CL_sample_sd": 0.10006990563594038,
+        "FC_mean": 0.7602272727272726,
+        "FC_sample_sd": 0.09405167081565742,
+        "CL_minus_FC_mean": -0.007954545454545457,
+        "difference_sample_sd": 0.09407025718426248,
+        "difference_ci95_low": -0.031079901012646658,
+        "difference_ci95_high": 0.015170810103555744,
+        "t": -0.6869656222749314,
+        "p_two_sided": 0.49454809833852764,
+        "cohens_dz": -0.0845596226973664
+      },
+      "Agreement_Rounds": {
+        "n_pairs": 66,
+        "df": 65,
+        "CL_mean": 7.606060606060606,
+        "CL_sample_sd": 3.8545828383638163,
+        "FC_mean": 8.56060606060606,
+        "FC_sample_sd": 5.0539513494318715,
+        "CL_minus_FC_mean": -0.9545454545454546,
+        "difference_sample_sd": 5.112373581455451,
+        "difference_ci95_low": -2.211323742983887,
+        "difference_ci95_high": 0.30223283389297806,
+        "t": -1.516861748880692,
+        "p_two_sided": 0.1341502874026907,
+        "cohens_dz": -0.1867127742792426
+      },
+      "Concession_Rate": {
+        "n_pairs": 66,
+        "df": 65,
+        "CL_mean": 0.37429750384295835,
+        "CL_sample_sd": 0.2729224290267358,
+        "FC_mean": 0.2807514853567485,
+        "FC_sample_sd": 0.19658040401803106,
+        "CL_minus_FC_mean": 0.09354601848620986,
+        "difference_sample_sd": 0.2983958213217971,
+        "difference_ci95_low": 0.020191169975467008,
+        "difference_ci95_high": 0.16690086699695272,
+        "t": 2.5468568675537293,
+        "p_two_sided": 0.013246633659359736,
+        "cohens_dz": 0.3134964091381415
+      },
+      "Norm_Arousal": {
+        "n_pairs": 66,
+        "df": 65,
+        "CL_mean": 0.14197744783567895,
+        "CL_sample_sd": 0.15637637504496954,
+        "FC_mean": 0.016886018005033226,
+        "FC_sample_sd": 0.06534826398616513,
+        "CL_minus_FC_mean": 0.1250914298306457,
+        "difference_sample_sd": 0.18292395074094467,
+        "difference_ci95_low": 0.08012311011306524,
+        "difference_ci95_high": 0.17005974954822617,
+        "t": 5.555574193092905,
+        "p_two_sided": 5.533382046483731e-07,
+        "cohens_dz": 0.6838439106741091
+      },
+      "Norm_Valence": {
+        "n_pairs": 66,
+        "df": 65,
+        "CL_mean": 0.053697215152749674,
+        "CL_sample_sd": 0.12921282405663165,
+        "FC_mean": 0.027928719991134016,
+        "FC_sample_sd": 0.12766599459677233,
+        "CL_minus_FC_mean": 0.02576849516161566,
+        "difference_sample_sd": 0.20766084484471628,
+        "difference_ci95_low": -0.025280912124719918,
+        "difference_ci95_high": 0.07681790244795124,
+        "t": 1.0081064847789871,
+        "p_two_sided": 0.31714147903773043,
+        "cohens_dz": 0.1240893302773795
+      }
+    },
+    "holm_four_outcome_family": {
+      "Norm_Arousal": 2.2133528185934923e-06,
+      "Concession_Rate": 0.03973990097807921,
+      "Agent_Utility": 0.03973990097807921,
+      "Agreement_Rounds": 0.1341502874026907
+    },
+    "descriptive_correlations": {
+      "CL": {
+        "pooled_round_r": 0.4540581058055486,
+        "finite_within_session_fisher_backtransformed_mean_r": 0.8648320441598559,
+        "fisher_sessions_included": 63,
+        "fisher_sessions_excluded": 3
+      },
+      "FC": {
+        "pooled_round_r": -0.1530208633716278,
+        "finite_within_session_fisher_backtransformed_mean_r": -0.2672227003500368,
+        "fisher_sessions_included": 66,
+        "fisher_sessions_excluded": 0
+      }
+    }
+  }
+}

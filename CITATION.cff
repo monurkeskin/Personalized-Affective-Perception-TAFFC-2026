@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: Please cite the accompanying manuscript when using this code or the derived study data.
+type: software
+title: Personalized Affective Perception via Continual Learning in Human-Agent Negotiation
+authors:
+- family-names: Anonymous
+license: MIT
+repository-code: https://github.com/monurkeskin/Personalized-Affective-Perception-via-Continual-Learning-TAFFC-2026
+url: https://github.com/monurkeskin/Personalized-Affective-Perception-via-Continual-Learning-TAFFC-2026
+keywords:
+- affective computing
+- continual learning
+- human-agent interaction
+- human-robot interaction
+- automated negotiation
+- facial expression recognition
+- personalization
+- emotion recognition
+- online learning
+preferred-citation:
+  type: unpublished
+  title: Personalized Affective Perception via Continual Learning in Human-Agent Negotiation
+  authors:
+  - family-names: Anonymous
+  year: 2025
+  status: submitted
+  notes: Manuscript under review.
+  url: https://github.com/monurkeskin/Personalized-Affective-Perception-via-Continual-Learning-TAFFC-2026#8-citation

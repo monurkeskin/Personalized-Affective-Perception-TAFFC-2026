@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "session_id": "SYNTHETIC-EXAMPLE",
+  "policy": {
+    "command": ["python", "-m", "submission_runtime.worker", "--config", "examples/runtime/solver.json"],
+    "runtime": "solver-cl-policy",
+    "capabilities": ["decide"],
+    "timeout_seconds": 10
+  },
+  "asset_manifests": []
+}

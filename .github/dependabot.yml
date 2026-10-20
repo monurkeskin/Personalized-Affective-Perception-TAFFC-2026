@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+    groups:
+      verification:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+
+# Submission snapshot: maintenance is published as one reviewed root commit.
+# Version-update PRs are disabled. Security alerts remain enabled; automatic
+# security-fix PRs are disabled separately in repository settings.

@@ -1,0 +1,8 @@
+# Optional statistical modelling and plotting; not needed by verify_all_results.py.
+-r requirements.txt
+pandas>=2.3.3,<3
+statsmodels>=0.15,<0.16
+seaborn>=0.13.2,<0.14
+matplotlib>=3.10,<4
+openpyxl>=3.1.5,<4
+scikit-learn>=1.7.2,<2

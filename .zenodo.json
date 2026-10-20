@@ -1,0 +1,22 @@
+{
+  "title": "Personalized Affective Perception via Continual Learning in Human-Agent Negotiation",
+  "upload_type": "software",
+  "description": "Continual learning personalizes the agent’s facial affect model to the person it is negotiating with. The model estimates valence and arousal. Changes in the direction and intensity of these estimates adjust the value the agent seeks for itself in its next offer. The accompanying manuscript is under review.",
+  "creators": [
+    {
+      "name": "Anonymous"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "affective computing",
+    "continual learning",
+    "human-agent interaction",
+    "human-robot interaction",
+    "automated negotiation",
+    "facial expression recognition",
+    "personalization",
+    "emotion recognition",
+    "online learning"
+  ]
+}
