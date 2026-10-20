@@ -1,0 +1,42 @@
+name: Public data verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /verify_all_results.py
+            /requirements*.txt
+            /requirements*.lock
+            /verification/
+            /tests/
+            /final_dataset/experiment_subject_data.csv
+            /final_dataset/experiment_round_data.csv
+            /src_code/**/*.py
+            /src_code/**/requirements.txt
+            /src_code/**/Domain/**/*.xml
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --require-hashes -r requirements-test.lock
+      - run: python -m pip check
+      - run: python -m pytest tests -q
+      - run: python verify_all_results.py

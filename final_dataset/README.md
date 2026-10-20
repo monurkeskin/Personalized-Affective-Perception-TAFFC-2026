@@ -1,39 +1,19 @@
-# Data Repository for "Personalized Affective Perception via Continual Learning in Human-Agent Negotiation"
+# Public derived study data
 
-This repository contains the anonymized experimental data (N=66) used to reproduce the findings in the paper Personalized Affective Perception via Continual Learning in Human-Agent Negotiation.
+Two CSV exports represent a counterbalanced within-participant study: 66 participants, each with one CL and one FC session (132 sessions). `experiment_round_data.csv` contains 2,114 logged offer positions: 980 CL and 1,134 FC. These rows are clustered within participants/sessions.
 
-## Experiment Overview
+## Subject summaries
 
-- **Design**: Within-subjects user study (N=66) comparing two conditions:
-  1. **CLIFER (CL)**: A continual learning-enabled Solver agent that personalizes affect perception in real-time.
-  2. **FaceChannel (FC)**: A static baseline agent using a pre-trained generalized affect model.
-- **Sample Size**: 66 paired sessions (Total 132 sessions).
-- **Data Points**: 2,114 round-level affective predictions.
-- **Statistical Power**: N=66 provides power ≥0.80 for detecting effects as small as d=0.35.
+`experiment_subject_data.csv` has one row per `Subject_ID`, `Session_ID` and `Condition`. Outcome fields include `Agent_Utility`, `Human_Utility`, `Agreement_Rounds`, and the six participant move rates. Raw/normalized affect summary columns are retained as exported. Nash-distance and questionnaire fields are not included in this CSV.
 
-## Dataset Files
+The existing subject IDs, condition assignment, observations and numeric values are unchanged. Pair conditions using `Subject_ID`; do not rely on row order. The exported order comprises 34 CL-first and 32 FC-first participants.
 
-### 1. Subject-Level Outcomes (`experiment_subject_data.csv`)
+## Logged offer positions
 
-Contains aggregated metrics for RQ1-RQ4.
-**Key columns:**
+`experiment_round_data.csv` uses `Subject_ID`, `Session_ID`, `Round_ID` and `Condition`, with affect, bidder, utility, move and scaled-time fields. The first two positions in each session contain zero affect entries. Missing bidder/utility/time and actor-specific move fields must retain their export semantics; the verifier does not impute or silently drop them.
 
-- `Condition`: **CL** (CLIFER) vs **FC** (FaceChannel).
-- `Agent_Utility`: Normalized utility score (0.0 - 1.0) achieved by the agent.
-- `User_Utility`: Normalized utility score (0.0 - 1.0) achieved by the human participant.
-- `Agreement_Rounds`: Efficiency metric (number of rounds to agreement).
-- `Nash_Distance`: Metric for joint optimality (Euclidean distance to the Nash Bargaining Solution on the Pareto frontier).
-- `Concession_Rate`: Frequency of concession moves (Stepwise Analysis). (p=0.013, d=0.32).
-- `Selfish_Rate`, `Unfortunate_Rate`, `Fortunate_Rate`, `Nice_Rate`, `Silent_Rate`: Other behavioral move categories.
+The `Norm_Arousal` and `Norm_Valence` fields are exported model estimates. This package does not reconstruct their preprocessing or establish accuracy against independently annotated affect. Group participant summaries using both `Subject_ID` and `Condition`; condition/session identity is also validated across the two files.
 
-### 2. Round-Level Affect (`experiment_round_data.csv`)
+## Verification
 
-Contains round-by-round affective predictions for RQ5.
-**Key columns:**
-
-- `Condition`: **CL** vs **FC**.
-- `Norm_Arousal`: Normalized prediction in range **[-1.0, 1.0]**.
-- `Norm_Valence`: Normalized prediction in range **[-1.0, 1.0]**.
-- `Raw_Arousal`, `Raw_Valence`: Raw affect predictions before session z-scoring.
-- `Agent_Move`, `User_Move`: Move categories captured for the agent and user at each turn.
-- **Note on Subject IDs**: Subject IDs in this file are assigned alphabetically to ensure round-level anonymity. Aggregation should be performed by grouping `Condition` and `Subject_ID`.
+From the repository root, run `python verify_all_results.py` in the independent locked verification environment. It checks the frozen public data and its declared result subset. It does not reconstruct raw logs, calculate missing questionnaire/Nash fields, execute the models, or validate all manuscript analyses. See the root README for installation, scope and result definitions.

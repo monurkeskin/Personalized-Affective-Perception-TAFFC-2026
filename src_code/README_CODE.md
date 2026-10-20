@@ -20,7 +20,9 @@ This directory contains the core source code for the **Personalized Affective Pe
 
 ## Reproducibility Note
 
-The logic for Offer Generation, Sensitivity Classification, and Personalized Affect Perception is fully contained in these Python scripts and can be audited against the equations in the paper.
+These scripts retain the historical numerical implementation. Matching external integration adapters, model assets and separate robot/ML environments are required for runtime operation. The offline CSV verifier has a narrower declared scope and does not certify the complete robot experiment.
 
 See `ARCHITECTURE.md` for detailed paper-to-code mapping.
 
+
+Runtime and dependency boundaries: [maintenance guidance](../docs/maintenance.md). The NAOqi SDK/ALProxy bridge is not replaced by modern qi bindings during maintenance.

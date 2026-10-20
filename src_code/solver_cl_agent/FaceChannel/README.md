@@ -1,68 +1,9 @@
-# FaceChannel: Facial Affect Recognition Module
-Facial expression recognition module for automated negotiation
+# Historical FaceChannel service
 
-## Requirements
-- CUDA 11.0
-- Python 3.6 or higher
+This directory retains the original perception/continual-learning implementation. Keep its TensorFlow/Keras environment separate from the root verification environment and the robot SDK. Historical TF 2.4 tested configurations use Python 3.6-3.8; installing all repository requirements into one interpreter is unsupported.
 
-## Installation
-- **Python 3.6**: [Download](https://www.python.org/downloads/release/python-360/)
-- **CUDA 11.0**: [Download](https://www.tensorflow.org/install/gpu)
-- To install the required Python libraries:
-  ```sh
-  pip3 install -r requirements.txt
-  ```
-- Copy checkpoint files into `CLModel/checkpoint/`
+The original model assets and matching lab adapters are required. The root CSV verifier works without them. API GET/POST routes and prediction keys remain available to loopback clients; browser-origin/Host protections now run before experiment side effects. Optional token and remote-host configuration, pinned model acquisition, state trust and compatibility limits are described in [maintenance guidance](../../../docs/maintenance.md).
 
-## Usage
+The retained service exposes `/join`, `/start`, `/stop`, `/next` and `/exit`, with its original URL and JSON forms. It is a historical service interface; its two-session helper is not an independent implementation of the manuscript's complete demo/counterbalanced study protocol. Do not substitute it for the original lab orchestration without validation.
 
-Required functions can be called via **GET** or **POST** HTTP requests and return responses in **JSON** format.
-
-- **Join**
-  To initialize a negotiation session, invoke the Join function with an experiment ID:
-
-  ```sh
-  http://<IP>:<PORT>/join/<ExperimentID>
-  ```
-
-  Optionally, specify a Camera ID:
-
-  ```sh
-  http://<IP>:<PORT>/join/<CameraID>/<ExperimentID>
-  ```
-
-  > Note: Returns `{"status": true}`
-  
-- **Start**
-  Starts image capture and saves raw frames to the log directory. Invoke the Start function with the experiment ID:
-  ```sh
-  http://<IP>:<PORT>/start/<ExperimentID>
-  ```
-  
-  > Note: Returns `{"status": true}`
-
-- **Stop**
-  Stops image capture and triggers local Continual Learning (CL) training. Returns the average affect predictions. Invoke the Stop function with the experiment ID:
-  ```sh
-  http://<IP>:<PORT>/stop/<ExperimentID>
-  ```
-  
-  > Note: Returns `{"status": true, "predictions": {"Arousal": float, "Valence": float}}`
-  
-- **Next**
-  Must be called at the end of the first session. The first session uses the static **FaceChannel** baseline, while the second session uses the personalized **CL Model**.
-  This function also initiates the **CL Model** training sequence, which may take a few minutes to complete.
-  Invoke the Next function with the experiment ID:
-  ```sh
-  http://<IP>:<PORT>/next/<ExperimentID>
-  ```
-  
-  > Note: Returns `{"status": true}`
-  
-- **Exit**
-  Terminates the active experiment session. Invoke the Exit function with the experiment ID:
-  ```sh
-  http://<IP>:<PORT>/exit/<ExperimentID>
-  ```
-  
-  > Note: Returns `{"status": true}`
+Missing FaceChannel model files require an explicitly trusted asset installation. CAAE checkpoint entries are present in the Git tree but may be omitted from source-focused sparse checkouts. Model mathematical code and the historical dependency declarations remain unchanged by maintenance.

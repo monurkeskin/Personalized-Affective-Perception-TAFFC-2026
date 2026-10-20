@@ -29,9 +29,8 @@ from FaceChannel.FaceChannelV1 import imageProcessingUtil
 
 import sys
 import os
-import urllib
-import tarfile
 from pathlib import Path
+from FaceChannel.FaceChannelV1.model_assets import acquire_assets
 
 import tensorflow as tf
 
@@ -44,7 +43,7 @@ class FaceChannelV1:
     BATCH_SIZE = 32
     """Batch size used by FaceChannelV1"""
 
-    DOWNLOAD_FROM = "https://github.com/pablovin/FaceChannel/raw/master/src/FaceChannel/FaceChannelV1/trainedNetworks.tar.xz"
+    DOWNLOAD_FROM = "https://raw.githubusercontent.com/pablovin/FaceChannel/ec81e508bbc9e95276740202c26d0cbb5a7a20d3/src/FaceChannel/FaceChannelV1/trainedNetworks.tar.xz"
     """URL where the model is stored """
 
     CAT_CLASS_ORDER = [
@@ -89,25 +88,6 @@ class FaceChannelV1:
             os.path.abspath(sys.modules[FaceChannelV1.__module__].__file__)
         ).parent
 
-        if not os.path.exists(folderName / "TrainedNetworks"):
-            getFrom = self.DOWNLOAD_FROM
-            downloadName = folderName / "trainedNetworks.tar.xz"
-
-            print("-----------------------------------------------")
-            print("Wait ... Downloading  the trained networks...")
-            print("-----------------------------------------------")
-
-            urllib.request.urlretrieve(getFrom, downloadName)
-
-            with tarfile.open(downloadName) as f:
-                f.extractall(folderName)
-
-            os.remove(downloadName)
-
-            print("-----------------------------------------------")
-            print("Download complete!")
-            print("-----------------------------------------------")
-
         if type == "Cat":
             modelDirectory = (
                 folderName / "TrainedNetworks" / "CategoricalFaceChannel.h5"
@@ -120,6 +100,8 @@ class FaceChannelV1:
             raise ("Model type not found!")
 
         if loadModel:
+            if not modelDirectory.is_file():
+                acquire_assets(self.DOWNLOAD_FROM, folderName)
             model = self.loadModel(modelDirectory)
         else:
             if type == "Cat":

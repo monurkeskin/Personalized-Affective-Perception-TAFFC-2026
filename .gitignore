@@ -49,3 +49,10 @@ archive/
 
 # Anonymization mapping (do not commit)
 data/name_to_id_mapping.txt
+
+# Local maintenance and runtime outputs; existing tracked study assets are preserved.
+.venv/
+verification-results/
+**/sessions/
+**/saved_gwrs/
+*.tar.xz
