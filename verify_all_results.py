@@ -1,212 +1,259 @@
 #!/usr/bin/env python3
-"""
-Solver-CL Agent: Complete Academic Verification & Replication Suite
-========================================================================
-This script executes the entire supplemental data and statistical pipeline,
-compares replicated outcomes directly against IEEE TAC publication targets,
-and displays an interactive terminal verification summary.
+"""Verify frozen public CSV results offline; this does not validate the robot study."""
+from __future__ import annotations
 
-Author: Solver-CL Development Team
-Date: May 2026
-"""
-
-import os
+import argparse
+from collections import Counter, defaultdict
+import csv
+import hashlib
+import json
+import math
+from pathlib import Path
 import sys
-import time
-import subprocess
+
 import numpy as np
-import pandas as pd
 from scipy import stats
-import statsmodels.formula.api as smf
 
-# Color constants for rich terminal UI
-GREEN = '\033[92m'
-RED = '\033[91m'
-YELLOW = '\033[93m'
-CYAN = '\033[96m'
-BOLD = '\033[1m'
-RESET = '\033[0m'
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPORT_DIR = os.path.join(SCRIPT_DIR, 'statistical_analysis', 'reports')
-REPORT_FILE = os.path.join(REPORT_DIR, 'verification_results_summary.txt')
-
-# Publication targets for automated assertion validation
-TARGETS = {
-    'agent_utility_cl': 0.750,
-    'agent_utility_fc': 0.728,
-    'agent_utility_p': 0.017,
-    'agent_utility_d': 0.31,
-    
-    'concession_cl': 0.374,
-    'concession_fc': 0.281,
-    'concession_p': 0.013,
-    'concession_d': 0.32,
-    
-    'rounds_cl': 7.61,
-    'rounds_fc': 8.56,
-    'rounds_p': 0.130,
-    'rounds_d': -0.19,
-    
-    'lmm_arousal_beta': 0.144,
-    'lmm_arousal_z': 22.31,
-    
-    'lmm_valence_beta': 0.033,
-    'lmm_valence_z': 4.34,
-    
-    'corr_cl_r': 0.45,
-    'corr_fc_r': -0.15,
+ROOT = Path(__file__).resolve().parent
+REFERENCE = ROOT / "verification" / "expected-results.json"
+FILES = {"subjects": "experiment_subject_data.csv", "rounds": "experiment_round_data.csv"}
+SUBJECT_COLUMNS = (
+    "Subject_ID,Session_ID,Condition,Agent_Utility,Human_Utility,Agreement_Rounds,"
+    "Raw_Arousal,Raw_Valence,Max_Arousal,Min_Arousal,Max_Valence,Min_Valence,"
+    "Norm_Arousal,Norm_Valence,Concession_Rate,Nice_Rate,Fortunate_Rate,"
+    "Unfortunate_Rate,Selfish_Rate,Silent_Rate"
+).split(",")
+ROUND_COLUMNS = (
+    "Subject_ID,Session_ID,Round_ID,Condition,Agent_Utility,Human_Utility,"
+    "Raw_Arousal,Raw_Valence,Max_Arousal,Min_Arousal,Max_Valence,Min_Valence,"
+    "Bidder,Agent_Move,User_Move,Scaled_Time,Norm_Arousal,Norm_Valence"
+).split(",")
+TEXT_COLUMNS = {"Condition", "Bidder", "Agent_Move", "User_Move"}
+OPTIONAL_ROUND = {"Agent_Utility", "Human_Utility", "Scaled_Time", "Bidder", "Agent_Move", "User_Move"}
+OUTCOMES = ["Agent_Utility", "Human_Utility", "Agreement_Rounds", "Concession_Rate", "Norm_Arousal", "Norm_Valence"]
+HOLM_FAMILY = ["Norm_Arousal", "Concession_Rate", "Agent_Utility", "Agreement_Rounds"]
+UNVERIFIED = {
+    "Nash_distance": "Reference Nash solutions and a Nash-distance column are absent from the two CSVs.",
+    "questionnaire": "Item-level questionnaire observations are absent.",
+    "mediation_and_bootstrap": "This bounded verifier does not reproduce mediation, bootstrap, order or LMM analyses.",
+    "perception_accuracy": "CSV model-output differences do not establish accuracy against ground-truth affect labels.",
+    "model_and_robot_runtime": "No models, camera, robot, speech service or experiment controller are executed.",
+    "manuscript_complete": "Only the explicitly listed public-data results are checked; this is not whole-manuscript validation.",
 }
 
-def print_header(title):
-    print("\n" + CYAN + "="*80 + RESET)
-    print(BOLD + CYAN + f"  {title.upper()}" + RESET)
-    print(CYAN + "="*80 + RESET)
 
-def run_step(step_num, step_name):
-    print(f"\n{BOLD}{YELLOW}[STEP {step_num}] {step_name}...{RESET}")
-    time.sleep(0.5)
+def read_csv(path: Path, columns: list[str], *, rounds: bool) -> list[dict]:
+    """Validate the public schema and numbers without silently dropping observations."""
+    with path.open(newline="", encoding="utf-8-sig") as stream:
+        reader = csv.DictReader(stream)
+        headers = reader.fieldnames or []
+        if len(headers) != len(set(headers)) or set(headers) != set(columns):
+            raise ValueError(f"{path.name}: unexpected or duplicate CSV columns")
+        rows = []
+        for line, raw in enumerate(reader, 2):
+            if None in raw or any(value is None for value in raw.values()):
+                raise ValueError(f"{path.name}:{line}: malformed CSV row")
+            row = {}
+            for column in columns:
+                value = raw[column].strip()
+                if not value:
+                    if rounds and column in OPTIONAL_ROUND:
+                        row[column] = None
+                        continue
+                    raise ValueError(f"{path.name}:{line}: missing {column}")
+                if column in TEXT_COLUMNS:
+                    row[column] = value
+                    continue
+                try:
+                    number = float(value)
+                except ValueError as exc:
+                    raise ValueError(f"{path.name}:{line}: invalid {column}") from exc
+                if not math.isfinite(number):
+                    raise ValueError(f"{path.name}:{line}: non-finite {column}")
+                if column.endswith("_ID") or column == "Agreement_Rounds":
+                    if not number.is_integer() or number < 1:
+                        raise ValueError(f"{path.name}:{line}: {column} must be a positive integer")
+                    number = int(number)
+                if column.endswith("_Utility") or column.endswith("_Rate"):
+                    if not 0 <= number <= 1:
+                        raise ValueError(f"{path.name}:{line}: {column} outside [0,1]")
+                row[column] = number
+            if row["Condition"] not in {"CL", "FC"} or row["Session_ID"] not in {1, 2}:
+                raise ValueError(f"{path.name}:{line}: unexpected condition/session")
+            rows.append(row)
+    if not rows:
+        raise ValueError(f"{path.name}: empty dataset")
+    key_columns = ["Subject_ID", "Session_ID"] + (["Round_ID"] if rounds else [])
+    keys = [tuple(row[key] for key in key_columns) for row in rows]
+    if len(keys) != len(set(keys)):
+        raise ValueError(f"{path.name}: duplicate observation keys")
+    return sorted(rows, key=lambda row: tuple(row[key] for key in key_columns))
 
-def main():
-    print("-" * 80)
-    print("Solver-CL: Personalized Affective Perception via Continual Learning")
-    print("Replication Suite for IEEE Transactions on Affective Computing (IEEE TAC)")
-    print("-" * 80)
-    
-    # STEP 1: Regenerate Dataset
-    run_step(1, "Dataset Reconstruction via merge_session_logs.py")
-    merger_path = os.path.join(SCRIPT_DIR, 'statistical_analysis', 'code', 'merge_session_logs.py')
+
+def validate_pairing(subjects: list[dict], rounds: list[dict]) -> None:
+    by_subject = defaultdict(list)
+    for row in subjects:
+        by_subject[row["Subject_ID"]].append(row)
+    if set(by_subject) != set(range(1, 67)):
+        raise ValueError("Subject summaries must contain exactly participant IDs 1 through 66")
+    for rows in by_subject.values():
+        if len(rows) != 2 or {r["Condition"] for r in rows} != {"CL", "FC"} or {r["Session_ID"] for r in rows} != {1, 2}:
+            raise ValueError("Each participant requires one CL and one FC summary in different sessions")
+    assignments = {(r["Subject_ID"], r["Session_ID"]): r["Condition"] for r in subjects}
+    grouped = defaultdict(list)
+    for row in rounds:
+        key = (row["Subject_ID"], row["Session_ID"])
+        if assignments.get(key) != row["Condition"]:
+            raise ValueError("Round participant/session/condition does not match its subject summary")
+        grouped[key].append(row["Round_ID"])
+    if set(grouped) != set(assignments):
+        raise ValueError("Round data must cover every participant session")
+    for ids in grouped.values():
+        if sorted(ids) != list(range(1, len(ids) + 1)):
+            raise ValueError("Round IDs must be consecutive within each participant session")
+
+
+def canonical_digest(rows: list[dict]) -> str:
+    """Hash normalized keyed records, permitting row/column order and numeric formatting changes."""
+    payload = json.dumps(rows, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def paired_estimate(cl: np.ndarray, fc: np.ndarray) -> dict:
+    difference = cl - fc
+    n = len(difference)
+    sd = float(np.std(difference, ddof=1))
+    if n < 2 or not math.isfinite(sd) or sd == 0:
+        raise ValueError("Paired inference requires at least two pairs and nonzero difference SD")
+    mean = float(np.mean(difference))
+    se = sd / math.sqrt(n)
+    t_value = mean / se
+    margin = float(stats.t.ppf(0.975, n - 1)) * se
+    return {
+        "n_pairs": n, "df": n - 1,
+        "CL_mean": float(np.mean(cl)), "CL_sample_sd": float(np.std(cl, ddof=1)),
+        "FC_mean": float(np.mean(fc)), "FC_sample_sd": float(np.std(fc, ddof=1)),
+        "CL_minus_FC_mean": mean, "difference_sample_sd": sd,
+        "difference_ci95_low": mean - margin, "difference_ci95_high": mean + margin,
+        "t": t_value, "p_two_sided": float(2 * stats.t.sf(abs(t_value), n - 1)),
+        "cohens_dz": mean / sd,
+    }
+
+
+def holm_adjust(p_values: dict[str, float]) -> dict[str, float]:
+    ordered = sorted(p_values, key=p_values.get)
+    result, previous = {}, 0.0
+    for rank, name in enumerate(ordered):
+        previous = max(previous, min(1.0, p_values[name] * (len(ordered) - rank)))
+        result[name] = previous
+    return result
+
+
+def calculate(subjects: list[dict], rounds: list[dict]) -> dict:
+    paired = {(r["Subject_ID"], r["Condition"]): r for r in subjects}
+    outcomes = {}
+    for column in OUTCOMES:
+        cl = np.array([paired[(sid, "CL")][column] for sid in range(1, 67)], dtype=float)
+        fc = np.array([paired[(sid, "FC")][column] for sid in range(1, 67)], dtype=float)
+        outcomes[column] = paired_estimate(cl, fc)
+    correlations = {}
+    for condition in ["CL", "FC"]:
+        rows = [r for r in rounds if r["Condition"] == condition]
+        pooled_r = float(stats.pearsonr([r["Norm_Arousal"] for r in rows], [r["Norm_Valence"] for r in rows]).statistic)
+        fisher, excluded = [], 0
+        for sid in range(1, 67):
+            session = [r for r in rows if r["Subject_ID"] == sid]
+            a = [r["Norm_Arousal"] for r in session]
+            v = [r["Norm_Valence"] for r in session]
+            if len(session) < 4 or np.std(a) == 0 or np.std(v) == 0:
+                excluded += 1
+                continue
+            r_value = float(stats.pearsonr(a, v).statistic)
+            # Exact/perfect correlations have no finite Fisher transform.
+            if not math.isfinite(r_value) or abs(r_value) >= 1 - 1e-12:
+                excluded += 1
+                continue
+            fisher.append(math.atanh(r_value))
+        if not math.isfinite(pooled_r) or not fisher:
+            raise ValueError("Correlation summary requires finite variable observations")
+        correlations[condition] = {
+            "pooled_round_r": pooled_r,
+            "finite_within_session_fisher_backtransformed_mean_r": math.tanh(float(np.mean(fisher))),
+            "fisher_sessions_included": len(fisher), "fisher_sessions_excluded": excluded,
+        }
+    return {
+        "counts": {
+            "participants": 66, "subject_rows": len(subjects), "round_rows": len(rounds),
+            "round_rows_CL": sum(r["Condition"] == "CL" for r in rounds),
+            "round_rows_FC": sum(r["Condition"] == "FC" for r in rounds),
+            "CL_first": sum(r["Condition"] == "CL" and r["Session_ID"] == 1 for r in subjects),
+        },
+        "paired_outcomes": outcomes,
+        "holm_four_outcome_family": holm_adjust({name: outcomes[name]["p_two_sided"] for name in HOLM_FAMILY}),
+        "descriptive_correlations": correlations,
+    }
+
+
+def compare(actual, expected, checks: list[dict], path: str = "results") -> None:
+    """Every reference value produces its own assertion; no metric reuses another status."""
+    if isinstance(expected, dict):
+        if not isinstance(actual, dict):
+            checks.append({"id": path, "passed": False, "error": "Missing result group"})
+            return
+        for key, value in expected.items():
+            compare(actual.get(key), value, checks, f"{path}.{key}")
+        return
+    numeric = isinstance(expected, (int, float)) and not isinstance(expected, bool)
+    if numeric:
+        passed = isinstance(actual, (int, float)) and math.isfinite(actual) and math.isclose(actual, expected, rel_tol=1e-8, abs_tol=1e-10)
+    else:
+        passed = actual == expected
+    checks.append({"id": path, "passed": bool(passed), "actual": actual, "expected": expected})
+
+
+def verify(data_dir: Path, expected: dict | None = None) -> dict:
+    report = {
+        "status": "failed", "scope": "Frozen public CSV schema, keyed paired estimates and descriptive correlations",
+        "methods": {"paired_direction": "CL minus FC", "sd_ddof": 1, "ci": "Unadjusted two-sided paired t 95% CI", "holm_family": HOLM_FAMILY,
+                    "correlation": "Pooled round r is descriptive. Finite within-session Fisher means are descriptive, have different inclusion counts, and are not a paired test."},
+        "checks": [], "results": {}, "coverage_unverified": UNVERIFIED,
+    }
     try:
-        res = subprocess.run([sys.executable, merger_path], capture_output=True, text=True, check=True)
-        print(f"{GREEN}✔ Dataset merger completed and validated successfully!{RESET}")
-    except subprocess.CalledProcessError as e:
-        print(f"{RED}✘ Dataset merger failed!{RESET}")
-        print(e.stderr)
-        sys.exit(1)
-        
-    # Load reconstructed files for analysis
-    merged_path = os.path.join(SCRIPT_DIR, 'statistical_analysis', 'data', 'affective_behavioral_merged.csv')
-    sub_path = os.path.join(SCRIPT_DIR, 'statistical_analysis', 'data', 'experiment_subject_data.csv')
-    
-    df_round = pd.read_csv(merged_path)
-    df_sub = pd.read_csv(sub_path)
-    
-    # Prepare reporting buffer
-    report_lines = []
-    def report_write(line):
-        print(line)
-        report_lines.append(line)
-        
-    # STEP 2: Subject-Level Paired Tests
-    print_header("RQ1-RQ4 Paired T-Tests (N=66 Subjects)")
-    report_write(f"{BOLD}{'Metric / Condition':<35} {'CL (Replicated)':<15} {'FC (Replicated)':<15} {'Replication Target':<20} {'Status':<10}{RESET}")
-    report_write("-" * 95)
-    
-    # 2.1 Agent Utility
-    fc_util = df_sub[df_sub['Condition'] == 'FC']['Agent_Utility'].values
-    cl_util = df_sub[df_sub['Condition'] == 'CL']['Agent_Utility'].values
-    t_util, p_util = stats.ttest_rel(cl_util, fc_util)
-    d_util = (cl_util.mean() - fc_util.mean()) / np.std(cl_util - fc_util)
-    
-    util_status = f"{GREEN}[PASS]{RESET}" if abs(cl_util.mean() - TARGETS['agent_utility_cl']) < 0.01 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Agent Utility Mean':<35} {cl_util.mean():<15.3f} {fc_util.mean():<15.3f} {TARGETS['agent_utility_cl']:.3f} vs {TARGETS['agent_utility_fc']:.3f} {util_status}")
-    report_write(f"{'Agent Utility t-test (p-val, d)':<35} p={p_util:<13.3f} d={d_util:<13.3f} p<{TARGETS['agent_utility_p']:.3f}, d={TARGETS['agent_utility_d']:.2f} {util_status}")
-    
-    report_write("-" * 95)
-    
-    # 2.2 Concession Rate
-    fc_conc = df_sub[df_sub['Condition'] == 'FC']['Concession_Rate'].values
-    cl_conc = df_sub[df_sub['Condition'] == 'CL']['Concession_Rate'].values
-    t_conc, p_conc = stats.ttest_rel(cl_conc, fc_conc)
-    d_conc = (cl_conc.mean() - fc_conc.mean()) / np.std(cl_conc - fc_conc)
-    
-    conc_status = f"{GREEN}[PASS]{RESET}" if abs(cl_conc.mean() - TARGETS['concession_cl']) < 0.02 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Human Concession Rate Mean':<35} {cl_conc.mean()*100:<13.1f}% {fc_conc.mean()*100:<13.1f}% {TARGETS['concession_cl']*100:.1f}% vs {TARGETS['concession_fc']*100:.1f}% {conc_status}")
-    report_write(f"{'Human Concession t-test (p, d)':<35} p={p_conc:<13.3f} d={d_conc:<13.3f} p<{TARGETS['concession_p']:.3f}, d={TARGETS['concession_d']:.2f} {conc_status}")
-    
-    report_write("-" * 95)
-    
-    # 2.3 Agreement Rounds
-    fc_rounds = df_sub[df_sub['Condition'] == 'FC']['Agreement_Rounds'].values
-    cl_rounds = df_sub[df_sub['Condition'] == 'CL']['Agreement_Rounds'].values
-    t_rounds, p_rounds = stats.ttest_rel(cl_rounds, fc_rounds)
-    d_rounds = (cl_rounds.mean() - fc_rounds.mean()) / np.std(cl_rounds - fc_rounds)
-    
-    rounds_status = f"{GREEN}[PASS]{RESET}" if abs(cl_rounds.mean() - TARGETS['rounds_cl']) < 0.05 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Agreement Rounds Mean':<35} {cl_rounds.mean():<15.2f} {fc_rounds.mean():<15.2f} {TARGETS['rounds_cl']:.2f} vs {TARGETS['rounds_fc']:.2f} {rounds_status}")
-    report_write(f"{'Agreement Rounds t-test (p, d)':<35} p={p_rounds:<13.3f} d={d_rounds:<13.3f} p={TARGETS['rounds_p']:.3f}, d={TARGETS['rounds_d']:.2f} {rounds_status}")
-    
-    # STEP 3: LMM Regressions
-    print_header("RQ5 Linear Mixed-Effects Models (Round-Level nesting)")
-    report_write(f"{BOLD}{'Affect Dimension':<35} {'Beta (Replicated)':<15} {'z-stat (Replicated)':<15} {'Replication Target':<20} {'Status':<10}{RESET}")
-    report_write("-" * 95)
-    
-    # Clean LMM dataframe (exclude NaN rows)
-    df_lmm_arousal = df_round[['Subject', 'Condition', 'Norm_Arousal']].dropna()
-    df_lmm_arousal['Condition_Num'] = (df_lmm_arousal['Condition'] == 'CL').astype(int)
-    
-    model_a = smf.mixedlm("Norm_Arousal ~ Condition_Num", data=df_lmm_arousal, groups=df_lmm_arousal["Subject"])
-    res_a = model_a.fit()
-    beta_a = res_a.params['Condition_Num']
-    z_a = res_a.tvalues['Condition_Num']
-    
-    ar_status = f"{GREEN}[PASS]{RESET}" if abs(beta_a - TARGETS['lmm_arousal_beta']) < 0.01 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Norm Arousal LMM Effect':<35} β={beta_a:<13.4f} z={z_a:<13.3f} β={TARGETS['lmm_arousal_beta']:.3f}, z={TARGETS['lmm_arousal_z']:.2f} {ar_status}")
-    
-    df_lmm_val = df_round[['Subject', 'Condition', 'Norm_Valence']].dropna()
-    df_lmm_val['Condition_Num'] = (df_lmm_val['Condition'] == 'CL').astype(int)
-    
-    model_v = smf.mixedlm("Norm_Valence ~ Condition_Num", data=df_lmm_val, groups=df_lmm_val["Subject"])
-    res_v = model_v.fit()
-    beta_v = res_v.params['Condition_Num']
-    z_v = res_v.tvalues['Condition_Num']
-    
-    val_status = f"{GREEN}[PASS]{RESET}" if abs(beta_v - TARGETS['lmm_valence_beta']) < 0.01 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Norm Valence LMM Effect':<35} β={beta_v:<13.4f} z={z_v:<13.3f} β={TARGETS['lmm_valence_beta']:.3f}, z={TARGETS['lmm_valence_z']:.2f} {val_status}")
+        expected = expected if expected is not None else json.loads(REFERENCE.read_text())
+        subjects = read_csv(data_dir / FILES["subjects"], SUBJECT_COLUMNS, rounds=False)
+        rounds = read_csv(data_dir / FILES["rounds"], ROUND_COLUMNS, rounds=True)
+        validate_pairing(subjects, rounds)
+        report["checks"].append({"id": "schema_and_keyed_pairing", "passed": True})
+        report["input_canonical_sha256"] = {"subjects": canonical_digest(subjects), "rounds": canonical_digest(rounds)}
+        compare(report["input_canonical_sha256"], expected["canonical_sha256"], report["checks"], "input_canonical_sha256")
+        report["results"] = calculate(subjects, rounds)
+        compare(report["results"], expected["results"], report["checks"])
+        report["reference_source_commit"] = expected["source_commit"]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        report["checks"].append({"id": "input_or_calculation_error", "passed": False, "error": str(exc)})
+    if report["checks"] and all(check["passed"] for check in report["checks"]):
+        report["status"] = "passed"
+    report["check_counts"] = dict(Counter("passed" if c["passed"] else "failed" for c in report["checks"]))
+    return report
 
-    # STEP 4: A-V Correlation
-    print_header("RQ5 Arousal-Valence Correlation Coherence")
-    report_write(f"{BOLD}{'Condition':<35} {'Mean r (Replicated)':<15} {'Fisher-z Mean':<15} {'Replication Target':<20} {'Status':<10}{RESET}")
-    report_write("-" * 95)
-    
-    # Calculate Fisher-z means
-    corrs = {'FC': [], 'CL': []}
-    for subj in df_round['Subject'].unique():
-        for cond in ['FC', 'CL']:
-            subj_data = df_round[(df_round['Subject'] == subj) & (df_round['Condition'] == cond)]
-            ar = subj_data['Norm_Arousal'].dropna()
-            vl = subj_data['Norm_Valence'].dropna()
-            if len(ar) > 3 and len(vl) > 3:
-                r, _ = stats.pearsonr(ar, vl)
-                if not np.isnan(r) and abs(r) < 1.0:
-                    z = np.arctanh(r) # Fisher transform
-                    corrs[cond].append(z)
-                    
-    mean_z_fc = np.mean(corrs['FC'])
-    mean_r_fc = np.tanh(mean_z_fc)
-    mean_z_cl = np.mean(corrs['CL'])
-    mean_r_cl = np.tanh(mean_z_cl)
-    
-    corr_status_fc = f"{GREEN}[PASS]{RESET}" if mean_r_fc < 0 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Generic Baseline (FC)':<35} r={mean_r_fc:<13.3f} z={mean_z_fc:<13.3f} r={TARGETS['corr_fc_r']:.2f} (negative) {corr_status_fc}")
-    
-    corr_status_cl = f"{GREEN}[PASS]{RESET}" if mean_r_cl > 0 else f"{RED}[FAIL]{RESET}"
-    report_write(f"{'Personalized Agent (CL)':<35} r={mean_r_cl:<13.3f} z={mean_z_cl:<13.3f} r={TARGETS['corr_cl_r']:.2f} (positive) {corr_status_cl}")
 
-    # Write summary text file
-    os.makedirs(REPORT_DIR, exist_ok=True)
-    with open(REPORT_FILE, 'w') as f:
-        f.write("="*80 + "\n")
-        f.write("SOLVER-CL ACADEMIC REPLICATION REPORT\n")
-        f.write("="*80 + "\n")
-        for line in report_lines:
-            # Strip colors for file writing
-            clean_line = line.replace(GREEN, '').replace(RED, '').replace(YELLOW, '').replace(CYAN, '').replace(BOLD, '').replace(RESET, '')
-            f.write(clean_line + "\n")
-            
-    print_header("Verification Summary Saved")
-    print(f"Report written directly to: {REPORT_FILE}")
-    print(f"{GREEN}✔ Verification complete: All statistical and game-theoretic replications match publication targets.{RESET}\n")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-dir", type=Path, default=ROOT / "final_dataset", help="Directory containing the two public CSV files")
+    parser.add_argument("--output-dir", type=Path, help="Explicit optional destination for verification-results.json; default writes only JSON to stdout")
+    args = parser.parse_args(argv)
+    report = verify(args.data_dir)
+    if args.output_dir:
+        try:
+            args.output_dir.mkdir(parents=True, exist_ok=True)
+            (args.output_dir / "verification-results.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+        except OSError as exc:
+            report["status"] = "failed"
+            report["checks"].append({"id": "output_write", "passed": False, "error": str(exc)})
+            report["check_counts"] = dict(Counter("passed" if c["passed"] else "failed" for c in report["checks"]))
+    print(json.dumps(report, indent=2, allow_nan=False))
+    return 0 if report["status"] == "passed" else 1
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
