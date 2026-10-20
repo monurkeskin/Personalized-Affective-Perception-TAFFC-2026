@@ -1,6 +1,6 @@
 # Solver-CL Agent: Architecture Documentation
 
-This document maps the source code structure to the paper's methodology. It covers the **CLIFER-Enabled Solver Agent** framework which integrates Continual Learning for personalized affective perception into automated negotiation.
+This document locates the historical Solver/CLIFER components. The original numerical source is retained for provenance. Running the robot/perception system additionally requires the matching lab adapters, model assets and separate runtime environments; this map does not certify a complete runnable reproduction. See [maintenance guidance](../docs/maintenance.md).
 
 ---
 
@@ -58,7 +58,7 @@ This document maps the source code structure to the paper's methodology. It cove
 | Semantic Memory (GDM-S) | Same file, different params | Lower max_nodes, higher age |
 | CAAE Generator | `CLModel/checkpoint/` | Pre-trained TensorFlow model |
 | Imagined Samples | `cl_model_c3.py:generate_images()` | Lines 160-206 |
-| L_total Loss | `cl_model_c3.py:train_GDM()` | Lines 484-573 |
+| GDM training with real/imagined features | `cl_model_c3_faster.py:train_GDM()` | Historical GWR update path; no separate weighted-loss optimizer is asserted |
 
 ### Section 4.2: Differential Affective Feedback (P_E)
 
@@ -70,7 +70,7 @@ This document maps the source code structure to the paper's methodology. It cove
 | Normalization | `Solver_Agent.py` | L491-493 |
 | Final P_E | `Solver_Agent.py` | L495-499 |
 | Emotion Mappings | `Solver_Agent.py:emotion_evaluations` | L287-295 |
-| Running Z-Score | `estimated_sensitivity_calculator.py` | Normalization |
+| Normalized affect input | `Solver_Agent.py:receive_offer()` | Requires the externally supplied `normalized_predictions` contract |
 
 ### Section 4.3: Asynchronous Architecture (Algorithm 1)
 
@@ -110,7 +110,11 @@ Implements the dual-memory continual learning:
 
 ```
 Core:           HATN (negotiation protocol)
-ML Framework:   TensorFlow 1.x/2.x (CAAE model)
+ML Framework:   Historical TF graph/session environment (requires original model compatibility)
 Affect Model:   FaceChannel (pre-trained dimensional model)
 CL Memory:      GWR (Growing When Required networks)
 ```
+
+## Runtime selection and preservation
+
+`main.py` currently selects Hybrid; the differential-feedback implementation lives in `SolverAgent`. Their integration must be validated with the original adapters before substituting one for the other. The active session/training code imports `cl_model_c3_faster.py`. The analysis verifier runs independently of this runtime and does not certify camera/robot operation, normalization, condition isolation or model publication. Maintenance changes do not alter the original Solver/GWR/condition implementation.
