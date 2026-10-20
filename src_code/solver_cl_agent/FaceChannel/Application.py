@@ -19,8 +19,10 @@ for gpu in gpus:
 
 import SessionManager
 from flask import Flask, request, jsonify, render_template
+from local_api_security import install_request_guard, normalized_id
 
 application = Flask(__name__)
+install_request_guard(application)
 
 experiments = {}
 
@@ -63,9 +65,9 @@ def join_with_camera(camera_id: int, id: int):
 @application.route("/join", methods=["GET", "POST"])
 def join_with_request():
     try:
-        id = request.json["id"]
+        id = normalized_id(request.json["id"])
 
-        camera_id = request.json.get("camera_id", 0)
+        camera_id = int(normalized_id(request.json.get("camera_id", 0)))
 
         if id in experiments.keys():
             return jsonify({"status": False})
@@ -90,7 +92,7 @@ def start(id: int):
 @application.route("/start", methods=["GET", "POST"])
 def start_with_request():
     try:
-        id = request.json["id"]
+        id = normalized_id(request.json["id"])
 
         experiments[id].start()
 
@@ -109,7 +111,7 @@ def stop(id: int):
 @application.route("/stop", methods=["GET", "POST"])
 def stop_with_request():
     try:
-        id = request.json["id"]
+        id = normalized_id(request.json["id"])
 
         predictions = experiments[id].stop()
 
@@ -132,7 +134,7 @@ def next(id: int):
 @application.route("/next", methods=["GET", "POST"])
 def next_with_request():
     try:
-        id = request.json["id"]
+        id = normalized_id(request.json["id"])
 
         experiments[id].next()
 
@@ -156,7 +158,7 @@ def exit(id: int):
 @application.route("/exit", methods=["GET", "POST"])
 def exit_with_request():
     try:
-        id = request.json["id"]
+        id = normalized_id(request.json["id"])
 
         experiments[id].close()
         del experiments[id]
@@ -167,4 +169,4 @@ def exit_with_request():
 
 
 if __name__ == "__main__":
-    application.run(threaded=False)
+    application.run(host="127.0.0.1", debug=False, threaded=False)
